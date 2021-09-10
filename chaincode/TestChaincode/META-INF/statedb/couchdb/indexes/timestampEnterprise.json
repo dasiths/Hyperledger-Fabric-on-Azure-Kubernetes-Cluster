@@ -1,0 +1,8 @@
+{
+  "index":{
+      "fields":["start_date_time", "end_date_time", "enterprise_id"]
+  },
+  "ddoc":"timestampEnterpriseDoc",
+  "name":"timestampEnterprise",
+  "type":"json"
+}

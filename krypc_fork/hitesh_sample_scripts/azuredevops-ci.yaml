@@ -1,0 +1,43 @@
+trigger:
+- main
+
+variables:
+- group: '{TODO add a VARIABLE THAT HAS REQUIRED INFORMATION LIKE IMG_NAME for docker build and push, git_token (only needed if dependencies are downloaded from private git repo) acr_service_connection_name for pushing image to specified acr}'
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: Docker@2
+  inputs:
+    containerRegistry: '$(acr_service_connection_name)'
+    repository: '$(IMG_NAME)'
+    command: 'build'
+    Dockerfile: '**/Dockerfile'
+    arguments: '--build-arg git_token=$(git_token)'
+
+- task: Docker@2
+  inputs:
+    containerRegistry: '$(acr_service_connection_name)'
+    repository: '$(IMG_NAME)'
+    command: 'push'
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      dir
+      $fileName = '$(Build.SourcesDirectory)/deployment_artifacts/deploy.yaml';
+      (Get-Content -path $fileName -Raw)  -replace 'CHAINCODE_DEPLOY_TAG', $(Build.BuildId)  | Set-Content -Path $fileName
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)/deployment_artifacts/'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'

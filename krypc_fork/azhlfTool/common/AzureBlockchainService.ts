@@ -212,10 +212,18 @@ export class AzureBlockchainService {
         }
 
         try {
-            // try CLI credentials - will work on Azure Cloud Shell
-            this.credentials = await AzureCliCredentials.create({ subscriptionIdOrName: subscriptionId });
+            try {
+                // try CLI credentials - will work on Azure Cloud Shell
+                console.log('Logging in using: ' + subscriptionId);
+                this.credentials = await AzureCliCredentials.create({ subscriptionIdOrName: subscriptionId });
+            } catch (error) {
+                console.log('Failed logging in with' + subscriptionId + '. Trying current context if already logged in.');
+                this.credentials = await AzureCliCredentials.create();
+                console.log('Logged in with current AZ CLI context.');
+            }
         } catch (error) {
             // fallback to interactive login - a bit annoying because is not cached.
+            console.log('Failed logging in with' + subscriptionId + ' or current AZ CLI context. fallback to interactive login.');
             this.credentials = await interactiveLogin();
         }
 

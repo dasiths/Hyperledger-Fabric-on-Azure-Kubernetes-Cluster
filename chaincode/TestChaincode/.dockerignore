@@ -1,0 +1,6 @@
+chaincode.env*
+*.json
+*.md
+*.tar.gz
+*.tgz
+deployment_artifacts

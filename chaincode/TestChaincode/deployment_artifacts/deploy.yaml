@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: CHAINCODE_DEPLOY_COMPONENT_NAME
+  name: CHAINCODE_DEPLOY_COMPONENT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: CHAINCODE_DEPLOY_COMPONENT_NAME
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        component: CHAINCODE_DEPLOY_COMPONENT_NAME
+    spec:
+      nodeSelector:
+        "beta.kubernetes.io/os": linux
+      containers:
+      - name: cc
+        env:
+        - name: CHAINCODE_ID
+          value: CHAINCODE_DEPLOY_CHAINCODE_ID
+        - name: CHAINCODE_SERVER_ADDRESS
+          value: 0.0.0.0:CHAINCODE_PORT
+        - name: CHAINCODE_TLS_DISABLED
+          value: 'false'            
+        - name: CHAINCODE_TLS_KEY
+          value: /crypto/key/key1.pem  
+        - name: CHAINCODE_TLS_CERT
+          value: /crypto/cert/cert1.pem                      
+        image: CHAINCODE_DEPLOY_ACR_NAME/CHAINCODE_DEPLOY_REPO:CHAINCODE_DEPLOY_TAG
+        ports:
+        - containerPort: CHAINCODE_PORT
+        resources: {}
+        volumeMounts:
+        - name: cc-cert
+          mountPath: /crypto/cert
+        - name: cc-key
+          mountPath: /crypto/key          
+      volumes:
+        - name: cc-cert
+          secret:
+             secretName: cc-cert  
+        - name: cc-key
+          secret:
+             secretName: cc-key                
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: CHAINCODE_DEPLOY_COMPONENT_NAME
+  name: CHAINCODE_DEPLOY_COMPONENT_NAME
+spec:
+  ports:
+  - name: "9999"
+    protocol: TCP
+    port: CHAINCODE_PORT
+    targetPort: CHAINCODE_PORT
+  selector:
+    component: CHAINCODE_DEPLOY_COMPONENT_NAME
