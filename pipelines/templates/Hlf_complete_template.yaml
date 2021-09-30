@@ -35,16 +35,6 @@ parameters:
   type: boolean
   default: false
 
-- name: deployOrderChaincode 
-  displayName: Deploy the chaincode (Order)
-  type: boolean
-  default: false
-
-- name: deployMetalChaincode 
-  displayName: Deploy the chaincode (Metal)
-  type: boolean
-  default: false
-
   # NOTE: All the variables used are listed below. Please keep this list up to date. They get injected from outside (i.e. variable group or pipeline using the template)
 
   ######## SPN and Subscription ##########

@@ -1,8 +1,12 @@
-# Hyper Ledger Fabric (HLF) 2.x on Azure Kubernetes Service (AKS)
+# Hyperledger Fabric (HLF) 2.x on Azure Kubernetes Service (AKS)
 
-Note: This pipeline is based on documentation in: https://github.com/krypc-code/Hyperledger-Fabric-on-Azure-Kubernetes-Cluster
+Forked from:
+> Hyperledger fabric developer network on few clicks. This offer is meant to provide Hyperledger Fabric as a Service using ARM Templates to spin off resources inside an AKS cluster. https://github.com/krypc-code/Hyperledger-Fabric-on-Azure-Kubernetes-Cluster
 
-This is an example how the same but done via an Azure DevOps Pipeline.
+
+This is an example how the same can be done in an automated way via an Azure DevOps Pipeline. The idea is to have two pipelines. One for deploying the infrastructure (Orderer, Peer and Consortium/Channel operation) and one for deploying the chaincode. We have a reusable template `HLF_complete_template.yaml` and a script `deployChaincode.sh` to facilitate this.
+
+We have an example using a single chaincode but you can easily extend this to support many chaincodes as all the required logic is reusable components.
 
 ## Variables Required For Pipeline
 
@@ -17,7 +21,7 @@ tempArtefactBlobName: comes-from-variable-group # note: this need to be created 
 tempArtefactBlobStorageKey: comes-from-variable-group 
 tempArtefactBlobContainerName: comes-from-variable-group # note: this need to be created prior
 
-##### Blob Storage for saving generated orderer and peer profile #
+# Blob Storage for saving generated orderer and peer profile #
 profileBlobStorageResourceGroup: comes-from-variable-group # note: this need to be created prior
 profileBlobName: comes-from-variable-group # note: this need to be created prior
 profileBlobStorageFileShare: comes-from-variable-group
@@ -27,7 +31,8 @@ dockerId: comes-from-variable-group
 dockerUsername: comes-from-variable-group  
 dockerPwd: comes-from-variable-group 
 dockerImage: comes-from-variable-group
-###### Key Vault ##########
+
+# Key Vault #
 keyVaultName: comes-from-parent-pipepine 
 
 # HLF specific #

@@ -75,8 +75,6 @@ stages:
 
         ######## Individual chaincode settings ########
         deployTestChaincode: ${{ parameters.deployTestChaincode }}
-        deployMetalChaincode: ${{ parameters.deployMetalChaincode }} 
-        deployOrderChaincode: ${{ parameters.deployOrderChaincode }}
 
 - stage: Test
   displayName: 'Test deployment'
@@ -98,8 +96,6 @@ stages:
 
         ######## Individual chaincode settings ########
         deployTestChaincode: ${{ parameters.deployTestChaincode }}
-        deployMetalChaincode: ${{ parameters.deployMetalChaincode }} 
-        deployOrderChaincode: ${{ parameters.deployOrderChaincode }}
 
 - stage: QA
   displayName: 'QA deployment'
@@ -121,5 +117,3 @@ stages:
 
         ######## Individual chaincode settings ########
         deployTestChaincode: ${{ parameters.deployTestChaincode }}
-        deployMetalChaincode: ${{ parameters.deployMetalChaincode }} 
-        deployOrderChaincode: ${{ parameters.deployOrderChaincode }}
