@@ -1,4 +1,15 @@
 parameters:
+# environment
+- name: deployEnvironment
+  displayName: The environment which we are deploying to
+  type: string
+- name: serviceConnectionName
+  displayName: Service connection to use
+  type: string
+- name: adminProfileKeyVaultServiceConnectionName
+  displayName: Service connection to use with KeyVault
+  type: string
+
 # Swtiches to control deployment options
 - name: deployResources
   displayName: Deploy Resources for Orderer and Peer
@@ -18,665 +29,499 @@ parameters:
   default: false
 
 # Switches to control deployment individual chaincodes
+
 - name: deployTestChaincode 
   displayName: Deploy the chaincode (Test)
   type: boolean
-  default: true
+  default: false
 
-# Other params
-- name: serviceConnection
-  displayName: Service connection used to deploy
-  type: string
-- name: hlfSubscription 
-  displayName: Subscription used to deploy
-  type: string
+- name: deployOrderChaincode 
+  displayName: Deploy the chaincode (Order)
+  type: boolean
+  default: false
 
-- name: blobStorageResourceGroup # this resource group must already be created
-  type: string
-- name: blobName # this blob must already be created
-  type: string
-- name: blobStorageKey
-  type: string
-- name: blobStorageFileShare # this will be automatically created
-  type: string
-- name: blobContainerName # this storage container must already be created
-  type: string
+- name: deployMetalChaincode 
+  displayName: Deploy the chaincode (Metal)
+  type: boolean
+  default: false
 
-- name: dockerId # this Azure Container Registry must already be created. Make sure "Admin user" is enabled in AccessKeys.
-  type: string
-- name: dockerUsername # docker admin user
-  type: string
-- name: dockerPwd # docker admin pwd
-  type: string
-- name: dockerImage  # name of the temporary tooling image
-  type: string
+  # NOTE: All the variables used are listed below. Please keep this list up to date. They get injected from outside (i.e. variable group or pipeline using the template)
 
-- name: hlfRegion
-  type: string
-- name: hlfUserName
-  type: string
-- name: hlfCaPassword
-  type: string
-- name: hlfAksClusterPeer
-  type: string
-- name: hlfAksClusterOrderer
-  type: string
-- name: hlfOrdererResourceGroup
-  type: string
-- name: hlfPeerResourceGroup
-  type: string
-- name: hlfOrdererOrganization # must be alphanumeric due to script issues https://stackoverflow.com/questions/67980820/jq-produces-is-not-defined-at-top-level-error
-  type: string
-- name: hlfPeerOrganization # must be alphanumeric due to script issues https://stackoverflow.com/questions/67980820/jq-produces-is-not-defined-at-top-level-error
-  type: string
-- name: hlfChannelName
-  type: string
-- name: hlfNetworkName
-  type: string
-- name: hlfContextName
-  type: string
+  ######## SPN and Subscription ##########
+  # serviceConnection: comes-from-variable-group
+  # hlfSubscription: comes-from-variable-group  
 
-- name: testChainCodeVersion
-  type: string
-- name: testChainCodeSequence # Important: This needs to increment each time a change to the chaincode is done and a new deployment of chain is required
-  type: number
+  ####### Blob Storage for temporary storage of build artefacts ########
+  # tempArtefactBlobName: comes-from-variable-group # note: this need to be created prior
+  # tempArtefactBlobStorageKey: comes-from-variable-group 
+  # tempArtefactBlobContainerName: comes-from-variable-group # note: this need to be created prior
+  
+  ####### Blob Storage for saving generated orderer and peer profile ########
+  # profileBlobStorageResourceGroup: comes-from-variable-group # note: this need to be created prior
+  # profileBlobName: comes-from-variable-group # note: this need to be created prior
+  # profileBlobStorageFileShare: comes-from-variable-group
 
-stages:
-- stage: DeployResources
-  displayName: Deploy Resources for Orderer and Peer
-  variables:
-    system.debugContext: false
+  ######## ACR ############
+  # dockerId: comes-from-variable-group 
+  # dockerUsername: comes-from-variable-group  
+  # dockerPwd: comes-from-variable-group 
+  # dockerImage: comes-from-variable-group
+  
+  ######## Key Vault ##########
+  # keyVaultName: comes-from-parent-pipepine 
 
-    ######## SPN and Subscription ##########
-    serviceConnection: ${{ parameters.serviceConnection }}
-    hlfSubscription: ${{ parameters.hlfSubscription }}   
+  ######## HLF specific #########
+  # hlfRegion: comes-from-variable-group 
+  # hlfUserName: comes-from-variable-group 
+  # hlfCaPassword: comes-from-variable-group 
+  # hlfAksClusterPeer: comes-from-variable-group 
+  # hlfAksClusterOrderer: comes-from-variable-group 
+  # hlfOrdererResourceGroup: comes-from-variable-group 
+  # hlfPeerResourceGroup: comes-from-variable-group 
+  # hlfOrdererOrganization: comes-from-variable-group  
+  # hlfPeerOrganization: comes-from-variable-group 
+  # hlfChannelName: comes-from-variable-group 
+  # hlfNetworkName: comes-from-variable-group 
+  # hlfContextName: comes-from-variable-group 
+  # hlfTDeployToolingRootFolder: comes-from-parent-pipepine
 
-    ####### Blob Storage and Resource Group ########
-    blobStorageResourceGroup: ${{ parameters.blobStorageResourceGroup }} 
-    blobName: ${{ parameters.blobName }} 
-    blobStorageKey: ${{ parameters.blobStorageKey }}
-    blobStorageFileShare: ${{ parameters.blobStorageFileShare }}
-    blobContainerName: ${{ parameters.blobContainerName }}
+  ######## shared chaincode settings ########
+  # chaincodeRootFolder: comes-from-parent-pipepine
+  # chaincodeSupportEmail: comes-from-parent-pipepine
+  # chaincodeCertificateCountry: comes-from-parent-pipepine
+  # chaincodeCertificateState: comes-from-parent-pipepine
+  # chaincodeCertificateLocality: comes-from-parent-pipepine
+  # chaincodeCertificateOrganisation: comes-from-parent-pipepine
+  # chaincodeCertificateName: comes-from-parent-pipepine
+  # chaincodeCertificateKeyName: comes-from-parent-pipepine 
+  # adminProfileSecretName: comes-from-parent-pipepine
+  # chaincodeSecretNamePrefix: comes-from-parent-pipepine 
 
-    ######## ACR ############
-    dockerId: ${{ parameters.dockerId }}
-    dockerUsername: ${{ parameters.dockerUsername }}  
-    dockerPwd: ${{ parameters.dockerPwd }} 
-    dockerImage: ${{ parameters.dockerImage }}
+  ######## Individual chaincode settings ########
+  ######## Test Chaincode ###########
+  # testChainCodeFolder: comes-from-parent-pipepine
+  # testChainCodeUniqueName: comes-from-parent-pipepine
+  # testChainCodeUniqueLabel: comes-from-parent-pipepine
+  # testChainCodeVersion: comes-from-variable-group 
+  # testChainCodeSequence: comes-from-variable-group 
+  # testChainCodeComponentName: comes-from-parent-pipepine
+  # testChainCodeUniqueNamespace: comes-from-parent-pipepine
+  # testChainCodePort: comes-from-parent-pipepine
 
-    ######## HLF specific #########
-    hlfRegion: ${{ parameters.hlfRegion }}
-    hlfUserName: ${{ parameters.hlfUserName }}
-    hlfCaPassword: ${{ parameters.hlfCaPassword }}
-    hlfAksClusterPeer: ${{ parameters.hlfAksClusterPeer }}
-    hlfAksClusterOrderer: ${{ parameters.hlfAksClusterOrderer }}
-    hlfOrdererResourceGroup: ${{ parameters.hlfOrdererResourceGroup }}
-    hlfPeerResourceGroup: ${{ parameters.hlfPeerResourceGroup }}
-    hlfOrdererOrganization: ${{ parameters.hlfOrdererOrganization }} 
-    hlfPeerOrganization: ${{ parameters.hlfPeerOrganization }}
-    hlfChannelName: ${{ parameters.hlfChannelName }}
-    hlfNetworkName : ${{ parameters.hlfNetworkName }}
-    hlfContextName : ${{ parameters.hlfContextName }}
-    hlfChaincodeTestPackageId: to-be-set-by-script # this will be set during the chaincode creation
-    hlfTDeployToolingRootFolder: $(Build.SourcesDirectory)/krypc_fork
+jobs:
+- deployment: GenerateImagesAndArtefacts
+  displayName: Generate Images And Artefacts
+  condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
+  environment: ${{ parameters.deployEnvironment }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self 
+        - task: Bash@3
+          displayName: Installing pre-requisites          
+          inputs:
+            targetType: 'inline'
+            failOnStandardError: true
+            script: |
+              sudo apt-get install zip
+              sudo apt-get install -y tar
+              sudo apt-get install -y libtool
+              sudo apt-get install -y npm
 
-    ######## shared chaincode settings ########
-    chaincodeRootFolder: $(Build.SourcesDirectory)/chaincode
-    chaincodeSupportEmail: support@yourorg.com.a
-    chaincodeCertificateCountry: AU
-    chaincodeCertificateState: VIC
-    chaincodeCertificateLocality: Melbourne
-    chaincodeCertificateOrganisation: ExampleInc
-    chaincodeCertificateName: cc-cert
-    chaincodeCertificateKeyName: cc-key  
+        - task: Bash@3
+          displayName: Generating artifacts and images
+          inputs:      
+            workingDirectory: "$(hlfTDeployToolingRootFolder)/scripts/"
+            targetType: 'filePath'
+            filePath: '$(hlfTDeployToolingRootFolder)/scripts/generateArtifacts.sh'
+            arguments: "$(dockerId).azurecr.io/$(dockerImage)"
+            failOnStderr: true
 
-    ######## Individual chaincode settings ########
-    ######## Test Chaincode ###########
-    testChainCodeFolder: $(Build.SourcesDirectory)/chaincode/TestChaincode
-    testChainCodeUniqueName: testchaincode
-    testChainCodeUniqueLabel: enterprise_2.0
-    testChainCodeVersion: ${{ parameters.testChainCodeVersion }}
-    testChainCodeSequence: ${{ parameters.testChainCodeSequence }}
-    testChainCodeComponentName: enterprisecc
-    testChainCodeUniqueNamespace: hlfenterprise
-    testChainCodePort: 9999
+        - task: Bash@3 # todo: use a Azure Pipeline Docker@2 task rather than using docker login
+          displayName: Pushing images to ACR and artifacts to blob container
+          inputs:      
+            targetType: 'inline'
+            failOnStandardError: true
+            script: | 
+              echo "Pushing images to ACR"     
+              docker login -u $(dockerUsername) -p $(dockerPwd) $(dockerId).azurecr.io
+              docker images
+              docker push $(dockerId).azurecr.io/$(dockerImage)
 
-  jobs:
-  - job: GenerateImagesAndArtefacts
-    displayName: Generate Images And Artefacts
-    steps:
-    - task: Bash@3
-      displayName: Installing pre-requisites
-      condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
-      inputs:
-        targetType: 'inline'
-        failOnStandardError: true
-        script: |
-          sudo apt-get install zip
-          sudo apt-get install -y tar
-          sudo apt-get install -y libtool
-          sudo apt-get install -y npm
-
-    - task: Bash@3
-      displayName: Generating artifacts and images
-      condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
-      inputs:      
-        workingDirectory: "$(hlfTDeployToolingRootFolder)/scripts/"
-        targetType: 'filePath'
-        filePath: '$(hlfTDeployToolingRootFolder)/scripts/generateArtifacts.sh'
-        arguments: "$(dockerId).azurecr.io/$(dockerImage)"
-        failOnStderr: true
-
-    - task: Bash@3 # todo: use a Azure Pipeline Docker@2 task rather than using docker login
-      displayName: Pushing images to ACR and artifacts to blob container
-      condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
-      inputs:      
-        targetType: 'inline'
-        failOnStandardError: true
-        script: | 
-          echo "Pushing images to ACR"     
-          docker login -u $(dockerUsername) -p $(dockerPwd) $(dockerId).azurecr.io
-          docker images
-          docker push $(dockerId).azurecr.io/$(dockerImage)
-
-          echo "Pushing artifacts to blob container"  
-          az storage blob upload --account-name $(blobName) --container-name $(blobContainerName) --file $(hlfTDeployToolingRootFolder)/out/hlf-marketplace.zip --name hlf-marketplace.zip --account-key $(blobStorageKey)
-          az storage blob upload --account-name $(blobName) --container-name $(blobContainerName) --file $(hlfTDeployToolingRootFolder)/out/artifacts/funcNodeJS.zip --name artifacts/funcNodeJS.zip --account-key $(blobStorageKey)
-          az storage blob upload --account-name $(blobName) --container-name $(blobContainerName) --file $(hlfTDeployToolingRootFolder)/out/nestedtemplates/publicIpTemplate.json --name nestedtemplates/publicIpTemplate.json --account-key $(blobStorageKey)
-          az storage blob upload --account-name $(blobName) --container-name $(blobContainerName) --file $(hlfTDeployToolingRootFolder)/out/mainTemplate.json --name mainTemplate.json --account-key $(blobStorageKey)
+              echo "Pushing artifacts to blob container"  
+              az storage blob upload --account-name $(tempArtefactBlobName) --container-name $(tempArtefactBlobContainerName) --file $(hlfTDeployToolingRootFolder)/out/hlf-marketplace.zip --name hlf-marketplace.zip --account-key $(tempArtefactBlobStorageKey)
+              az storage blob upload --account-name $(tempArtefactBlobName) --container-name $(tempArtefactBlobContainerName) --file $(hlfTDeployToolingRootFolder)/out/artifacts/funcNodeJS.zip --name artifacts/funcNodeJS.zip --account-key $(tempArtefactBlobStorageKey)
+              az storage blob upload --account-name $(tempArtefactBlobName) --container-name $(tempArtefactBlobContainerName) --file $(hlfTDeployToolingRootFolder)/out/nestedtemplates/publicIpTemplate.json --name nestedtemplates/publicIpTemplate.json --account-key $(tempArtefactBlobStorageKey)
+              az storage blob upload --account-name $(tempArtefactBlobName) --container-name $(tempArtefactBlobContainerName) --file $(hlfTDeployToolingRootFolder)/out/mainTemplate.json --name mainTemplate.json --account-key $(tempArtefactBlobStorageKey)
     
-  - job: CreateOrdererandPeer
-    displayName: 'Create Orderer and Peer deployment plan'
-    dependsOn: GenerateImagesAndArtefacts    
-    timeoutInMinutes: 120
-    steps:
-    - task: AzureCLI@2      
-      displayName: Ordererer resource groups and it's deployments
-      condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
-      timeoutInMinutes: 60
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        addSpnToEnvironment: true
-        failOnStandardError: false # set to false as this can return stderr
-        scriptLocation: inlineScript
-        inlineScript: |
-          az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
-          az account set --subscription $(hlfSubscription)
-
-          echo "Creating Orderer resource group and it's components..."
-          az group create -l $(hlfRegion) -n $(hlfOrdererResourceGroup)
-          az deployment group create --name hlf-main-orderer --resource-group $(hlfOrdererResourceGroup) --template-uri https://$(blobName).blob.core.windows.net/$(blobContainerName)/mainTemplate.json --parameter resourcePrefix='order-' hlfOrgName=$(hlfOrdererOrganization) clusterName=$(hlfAksClusterOrderer) dnsPrefix='orderer' agentCount='3' servicePrincipalClientId=$servicePrincipalId servicePrincipalClientSecret=$servicePrincipalKey hlfUserName=$(hlfUserName) hlfCaPswd=$(hlfCaPassword) kubernetesVersion='1.20.7'
-
-    - task: AzureCLI@2
-      displayName: Peer resource groups and it's deployments      
-      condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))
-      timeoutInMinutes: 60
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        addSpnToEnvironment: true
-        failOnStandardError: false # set to false as this can return stderr
-        scriptLocation: inlineScript
-        inlineScript: |
-          az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
-          az account set --subscription $(hlfSubscription)
-
-          echo "Creating Peer resource group and it's components..."
-          az group create -l $(hlfRegion) -n $(hlfPeerResourceGroup)            
-          az deployment group create --name hlf-main-peer --resource-group $(hlfPeerResourceGroup) --template-uri https://$(blobName).blob.core.windows.net/$(blobContainerName)/mainTemplate.json --parameter resourcePrefix='peer-' hlfOrgName=$(hlfPeerOrganization) clusterName=$(hlfAksClusterPeer) dnsPrefix='peer' agentCount='3' servicePrincipalClientId=$servicePrincipalId servicePrincipalClientSecret=$servicePrincipalKey hlfUserName=$(hlfUserName) hlfCaPswd=$(hlfCaPassword) kubernetesVersion='1.20.7' hlfMemberType='peer'
-      
-  - job: CreateProfiles
-    displayName: 'Create Profiles, Consortium, Setup Fabric CLI, Channel and chaincode operations'
-    dependsOn: CreateOrdererandPeer
-    condition: succeeded()
-    steps:
-    - task: AzureCLI@2
-      displayName: Creating profiles for orderer and peer # todo: we need to push these files to KeyVault
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        addSpnToEnvironment: true
-        failOnStandardError: false # required as the output gets detected as stderr even if not actually error
-        scriptLocation: inlineScript
-        inlineScript: |
-          az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
-          az account set --subscription $(hlfSubscription)
-
-          echo "Setting execute permissions for shell script getConnector.sh:"
-          sudo chmod +x $(hlfTDeployToolingRootFolder)/application/getConnector.sh
-
-          echo "getConnector.sh output for Orderer:"
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup)
-
-          echo "getConnector.sh output for Peer:"
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup)
-
-          echo "Creating Profile folder..."
-          mkdir -m 777 $(hlfTDeployToolingRootFolder)/application/profile
-
-          echo "Creating Orderer Profiles"
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/gateway/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/admin/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/msp/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
-
-          echo "Orderer CCP profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-ccp.json)
-
-          echo "Orderer Admin profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-admin.json)
-
-          echo "Orderer MSP profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-msp.json)
-
-          echo "Creating Peer Profiles"
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/gateway/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/admin/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
-          $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/msp/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
-
-          echo "Peer Connection profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-ccp.json)
-
-          echo "Peer Admin profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-admin.json)
-
-          echo "Peer MSP profile:"
-          while IFS= read -r line; do
-              echo "$line"
-          done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
-          # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-msp.json)
-
-    - task: Npm@1
-      displayName: Install NPM (azhlfTool)
-      inputs:
-        command: 'install'
-        verbose: true
-        workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
-
-    - task: Npm@1
-      displayName: NPM Audit (azhlfTool)
-      condition: and(succeeded(), eq('${{ parameters.runNpmAudit }}', 'true'))
-      inputs:
-        command: 'custom'
-        customCommand: 'audit --audit-level=high --registry=https://registry.npmjs.org/'
-        verbose: true
-        workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
-
-    - task: Npm@1
-      displayName: NPM Setup (azhlfTool)
-      inputs:
-        command: 'custom'
-        customCommand: 'run setup'
-        verbose: true
-        workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
-
-    - task: AzureCLI@2
-      displayName: Creating Consortium
-      condition: and(succeeded(), eq('${{ parameters.createConsortium }}', 'true'))
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        failOnStandardError: true
-        addSpnToEnvironment: true
-        scriptLocation: inlineScript
-        inlineScript: |
-          sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
-          sudo az account set --subscription $(hlfSubscription)
-
-          cd $(hlfTDeployToolingRootFolder)/azhlfTool
-          echo "Setting up variables"
-
-          # Set environment variables for the orderer organization's client
-          export ORDERER_ORG_SUBSCRIPTION=$(hlfSubscription)
-          export ORDERER_ORG_RESOURCE_GROUP=$(hlfOrdererResourceGroup)
-          export ORDERER_ORG_NAME=$(hlfOrdererOrganization)
-          export ORDERER_ADMIN_IDENTITY="admin.$ORDERER_ORG_NAME"
-          export CHANNEL_NAME=$(hlfChannelName)
-
-          # Set environment variables for the peer organization's client
-          export PEER_ORG_SUBSCRIPTION=$(hlfSubscription)
-          export PEER_ORG_RESOURCE_GROUP=$(hlfPeerResourceGroup)
-          export PEER_ORG_NAME=$(hlfPeerOrganization)
-          export PEER_ADMIN_IDENTITY="admin.$PEER_ORG_NAME"
-
-          # Set environment variables for an Azure storage account
-          export STORAGE_SUBSCRIPTION=$(hlfSubscription)
-          export STORAGE_RESOURCE_GROUP=$(blobStorageResourceGroup)
-          export STORAGE_ACCOUNT=$(blobName)
-          export STORAGE_FILE_SHARE=$(blobStorageFileShare)
-          
-          echo "Creating fileshare"
-          export STORAGE_KEY=$(az storage account keys list --resource-group $STORAGE_RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query "[0].value" | tr -d '"')
-          az storage share create --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY --name $STORAGE_FILE_SHARE
-
-          echo "Creating fileshare connection string"
-          export SAS_TOKEN=$(az storage account generate-sas --account-key $STORAGE_KEY --account-name $STORAGE_ACCOUNT --expiry `date -u -d "1 day" '+%Y-%m-%dT%H:%MZ'` --https-only --permissions lruwd --resource-types sco --services f | tr -d '"')
-          export AZURE_FILE_CONNECTION_STRING=https://$STORAGE_ACCOUNT.file.core.windows.net/$STORAGE_FILE_SHARE?$SAS_TOKEN
-
-          # For the orderer organization:
-          sudo ./azhlf adminProfile import fromAzure -o $ORDERER_ORG_NAME -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION
-          sudo ./azhlf connectionProfile import fromAzure -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION -o $ORDERER_ORG_NAME
-          sudo ./azhlf msp import fromAzure -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION -o $ORDERER_ORG_NAME
-
-          # For the peer organization:
-          sudo ./azhlf adminProfile import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
-          sudo ./azhlf connectionProfile import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
-          sudo ./azhlf msp import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
-
-          # Add a peer organization for consortium management
-          sudo ./azhlf msp export toAzureStorage -f $AZURE_FILE_CONNECTION_STRING -o $PEER_ORG_NAME
-          sudo ./azhlf msp import fromAzureStorage -o $PEER_ORG_NAME -f $AZURE_FILE_CONNECTION_STRING
-          sudo ./azhlf consortium join -o $ORDERER_ORG_NAME -u $ORDERER_ADMIN_IDENTITY -p $PEER_ORG_NAME
-
-    - task: AzureCLI@2
-      displayName: Clone Fabric CLI Repo
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        failOnStandardError: false
-        addSpnToEnvironment: true
-        scriptLocation: inlineScript
-        inlineScript: |
-          sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
-          sudo az account set --subscription $(hlfSubscription)
-
-          echo "Cloning git repo of fabric cli"
-          cd $(hlfTDeployToolingRootFolder)/
-          git clone https://github.com/hyperledger/fabric-cli.git
-          
-          # checkout commit we know works
-          cd fabric-cli
-          git checkout f699625b6781789d1422ceb00b2bf56c42df5ba1
-
-    - task: AzureCLI@2
-      displayName: Setup Fabric CLI
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        failOnStandardError: false
-        addSpnToEnvironment: true
-        scriptLocation: inlineScript
-        inlineScript: |
-          sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
-          sudo az account set --subscription $(hlfSubscription)
-
-          echo "Setting permission for certgen.sh"
-          sudo chmod +x $(hlfTDeployToolingRootFolder)/setupFabricCli/certgen.sh 
-
-          echo "Generate crypto materials for peer organization"
-          export Peer_Connection_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
-          export Peer_Admin_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
-          export Peer_Msp_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
-
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
-          ./certgen.sh peer $Peer_Admin_Profile_Path $Peer_Connection_Profile_Path $Peer_Msp_Profile_Path
-
-          echo "Generate crypto materials for orderer organization"
-          export Orderer_Connection_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
-          export Orderer_Admin_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
-          export Orderer_Msp_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
-         
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
-          ./certgen.sh orderer $Orderer_Admin_Profile_Path $Orderer_Connection_Profile_Path $Orderer_Msp_Profile_Path
-
-          export FABRIC_EXECUTABLE_PATH=$(hlfTDeployToolingRootFolder)/fabric-cli/bin/fabric
-          export PEER_CONNECTION_PROFILE_PATH=$Peer_Connection_Profile_Path
-          export ORDERER_CONNECTION_PROFILE_PATH=$Orderer_Connection_Profile_Path
-
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/genFabricCliGOConfig/main/
-          sudo go version
-          echo "Installing Go dependencies"
-          sudo go get ./...
-          echo "Building Go files"
-          sudo go build -o ../../configCoversion
-          cd ../../
-          echo "Running configVersion"
-          pwd
-          ./configCoversion
-
-          echo "Listing contents in $(hlfTDeployToolingRootFolder)/setupFabricCli/"
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
-          ls
-
-          echo "Building Fabric CLI"
-          cd $(hlfTDeployToolingRootFolder)/fabric-cli
-          make
-
-    - task: AzureCLI@2
-      displayName: Creating and joing channel
-      condition: and(succeeded(), eq('${{ parameters.createChannelAndJoin }}', 'true'))
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        failOnStandardError: false
-        addSpnToEnvironment: true
-        scriptLocation: inlineScript
-        inlineScript: |
-          sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
-          sudo az account set --subscription $(hlfSubscription)
-
-          export FABRIC_EXECUTABLE_PATH=$(hlfTDeployToolingRootFolder)/fabric-cli/bin/fabric
-
-          echo "Calling Fabric CLI network"
-          $FABRIC_EXECUTABLE_PATH network set $(hlfNetworkName) $(hlfTDeployToolingRootFolder)/setupFabricCli/$(hlfPeerOrganization)-config.yaml
-
-          echo "Setting Fabric CLI context"
-          export PEER_ORG_NAME=$(hlfPeerOrganization)
-          export PEER_ADMIN_IDENTITY="admin.$PEER_ORG_NAME"
-
-          $FABRIC_EXECUTABLE_PATH context set $(hlfContextName) --channel $(hlfChannelName) --network $(hlfNetworkName) --organization $(hlfPeerOrganization) --user $PEER_ADMIN_IDENTITY
-          $FABRIC_EXECUTABLE_PATH context use $(hlfContextName)
-          
-          echo "Creating channel config"
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
-          curl https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh | bash -s -- 2.2.0 -d -s
-          cat tempConfigtx.yaml | sed -e "s/OrgName/$(hlfPeerOrganization)/g" > configtx.yaml
-          bin/configtxgen -profile OrgsChannel -outputCreateChannelTx ./channel-artifacts/$(hlfChannelName).tx -channelID $(hlfChannelName)
-
-          echo "Creating channel using Fabric CLI "
-          $FABRIC_EXECUTABLE_PATH channel create $(hlfChannelName) ./channel-artifacts/$(hlfChannelName).tx
-
-          echo "Pausing before joining channel"
-          sleep 60
-
-          echo "Joining channel using Fabric CLI"
-          $FABRIC_EXECUTABLE_PATH channel join $(hlfChannelName)
-
-    - task: AzureCLI@2
-      displayName: "Chaincode (Test): Approve, Commit and Deploy"
-      condition: and(succeeded(), eq('${{ parameters.deployTestChaincode }}', 'true'))
-      inputs:
-        azureSubscription: ${{ parameters.serviceConnection }}
-        scriptType: bash
-        failOnStandardError: false
-        addSpnToEnvironment: true
-        scriptLocation: inlineScript
-        inlineScript: |
-          az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
-          az account set --subscription $(hlfSubscription)
-          
-          export FABRIC_EXECUTABLE_PATH=$(hlfTDeployToolingRootFolder)/fabric-cli/bin/fabric
-
-          echo "Calling Fabric CLI network"
-          $FABRIC_EXECUTABLE_PATH network set $(hlfNetworkName) $(hlfTDeployToolingRootFolder)/setupFabricCli/$(hlfPeerOrganization)-config.yaml
-
-          echo "Setting Fabric CLI context"
-          export PEER_ORG_NAME=$(hlfPeerOrganization)
-          export PEER_ADMIN_IDENTITY="admin.$PEER_ORG_NAME"
-
-          $FABRIC_EXECUTABLE_PATH context set $(hlfContextName) --channel $(hlfChannelName) --network $(hlfNetworkName) --organization $(hlfPeerOrganization) --user $PEER_ADMIN_IDENTITY
-          $FABRIC_EXECUTABLE_PATH context use $(hlfContextName)
-
-          echo "Starting chaincode operations"
-          cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
-
-          echo "<START>=========Test Chaincode===========<START>"
-
-          INSTALL_LOCATION=$(hlfTDeployToolingRootFolder)/setupFabricCli/ 
-          CHIANCODE_SHARED_ROOT=$(chaincodeRootFolder)
-          CHAINCODE_LOCATION=$(testChainCodeFolder)/deployment_artifacts          
-          CHAINCODE_NAME=$(testChainCodeUniqueName)
-          CHIANCODE_LABEL=$(testChainCodeUniqueLabel)
-          CHAINCODE_VERSION=$(testChainCodeVersion)
-          CHAINCODE_SEQUENCE=$(testChainCodeSequence)
-          COMP_NAME=$(testChainCodeComponentName)
-          NAMESPACE=$(testChainCodeUniqueNamespace)
-          ORG_NAME=$(hlfPeerOrganization)          
-          PORT=$(testChainCodePort)        
-          SUPPORT_EMAIL=$(chaincodeSupportEmail)
-          MANIFEST_FILE_PATH=$(testChainCodeFolder)/deployment_artifacts/deploy.yaml
-          ACR_NAME=$(dockerId).azurecr.io
-          ACR_REPO_NAME=$(testChainCodeUniqueName)
-          CHAINCODE_TAG=$(testChainCodeVersion).$(testChainCodeSequence)-$(Build.BuildId)
-          
-          # echo "Packaging chaincode: $CHAINCODE_NAME"
-
-          cd $CHAINCODE_LOCATION
-          mkdir crypto
-
-          echo "Making certificate using openssl"
-          openssl req -nodes -x509 -newkey rsa:4096 -keyout crypto/key1.pem -out crypto/cert1.pem -subj "/C=$(chaincodeCertificateCountry)/ST=$(chaincodeCertificateState)/L=$(chaincodeCertificateLocality)/O=$(chaincodeCertificateOrganisation)/OU=Developer/CN=${COMP_NAME}.${NAMESPACE}/emailAddress=${SUPPORT_EMAIL}"
-          Cert=$(awk 'NF {sub(/\r/, ""); printf "%s\n",$0;}' crypto/cert1.pem)
-
-          echo "Preparing connection json template and saving to chaincode folder"
-          connectionJson=$(cat $CHIANCODE_SHARED_ROOT/connection.json)
-          connectionJson=$(jq '.address = $newVal' --arg newVal "${COMP_NAME}.${NAMESPACE}:${PORT}" <<<$connectionJson)
-          connectionJson=$(jq '.root_cert = $newVal' --arg newVal "$Cert" <<<$connectionJson)
-          echo $connectionJson > $CHAINCODE_LOCATION/connection.json
-
-          while IFS= read -r line; do
-              echo "$line"
-          done < $CHAINCODE_LOCATION/connection.json
-
-          echo "Preparing metadata json template and saving to chaincode folder"
-          metadataJson=$(cat $CHIANCODE_SHARED_ROOT/metadata.json)
-          metadataJson=$(jq '.label = $newVal' --arg newVal "${CHIANCODE_LABEL}" <<<$metadataJson)
-          echo $metadataJson > $CHAINCODE_LOCATION/metadata.json
-
-          while IFS= read -r line; do
-              echo "$line"
-          done < $CHAINCODE_LOCATION/metadata.json
-
-          echo "Packaging chaincode"
-          tar cfz code.tar.gz connection.json
-          tar cfz ${COMP_NAME}.tgz metadata.json code.tar.gz
-
-          cd $INSTALL_LOCATION
-
-          echo "Installing chaincode"
-          # usage: fabric lifecycle install <chaincode-label> <path> [flags]
-          installInfo=$($FABRIC_EXECUTABLE_PATH lifecycle install $CHAINCODE_NAME $CHAINCODE_LOCATION/${COMP_NAME}.tgz)
-          echo $installInfo
-          arr=(${installInfo// / })
-
-          packageId=${arr[6]}
-          packageId=$(echo $packageId | tr -d \')
-
-          echo "####################################"
-          echo "PackageId for $CHAINCODE_NAME is as below. Please keep it stored for later."
-          printf "\n"
-          echo "PackageId = $packageId"
-          echo $packageId > $CHAINCODE_LOCATION/packageId.txt
-          echo "####################################"
-
-          echo "Approving chaincode"
-          # usage: fabric lifecycle approve <chaincode-name> <version> <package-id> <sequence>
-          $FABRIC_EXECUTABLE_PATH lifecycle approve $CHAINCODE_NAME $CHAINCODE_VERSION $packageId  $CHAINCODE_SEQUENCE --policy "OR('$ORG_NAME.member')"
-
-          echo "Logging commiting chaincode"
-          # usage: fabric lifecycle commit <chaincode-name> <version> <sequence> [flags]
-          $FABRIC_EXECUTABLE_PATH lifecycle commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_SEQUENCE --policy "OR('$ORG_NAME.member')"
-
-          echo "Logging into AKS"
-          az aks get-credentials --resource-group $(hlfPeerResourceGroup) --name $(hlfAksClusterPeer)
-
-          echo "Creating kubernetes namespace"
-
-          kubectl delete ns $NAMESPACE
-          kubectl create ns $NAMESPACE
-
-          echo "Creating kubernetes secrets"
-
-          kubectl create secret generic $(chaincodeCertificateName) --from-file=$CHAINCODE_LOCATION/crypto/cert1.pem -n $NAMESPACE
-          kubectl create secret generic $(chaincodeCertificateKeyName) --from-file=$CHAINCODE_LOCATION/crypto/key1.pem -n $NAMESPACE
-
-          ##########
-          #### Patch k8s manifest, Build and Push Docker image ####
-          ##########
-
-          echo "Updating template: $MANIFEST_FILE_PATH"
-
-          #updating component name for deployment
-          sed -i "s/CHAINCODE_DEPLOY_COMPONENT_NAME/${COMP_NAME}/g" $MANIFEST_FILE_PATH
-
-          #updating ACR name for deployment
-          sed -i "s/CHAINCODE_DEPLOY_ACR_NAME/${ACR_NAME}/g" $MANIFEST_FILE_PATH
-
-          #updating ACR REPO NAME
-          sed -i "s/CHAINCODE_DEPLOY_REPO/${ACR_REPO_NAME}/g" $MANIFEST_FILE_PATH
-
-          #updating TAG
-          sed -i "s/CHAINCODE_DEPLOY_TAG/${CHAINCODE_TAG}/g" $MANIFEST_FILE_PATH         
-
-          #updating PORT
-          sed -i "s/CHAINCODE_PORT/${PORT}/g" $MANIFEST_FILE_PATH
-
-          #updating ID
-          CHAINCODE_ID=$packageId
-          sed -i "s/CHAINCODE_DEPLOY_CHAINCODE_ID/${CHAINCODE_ID}/g" $MANIFEST_FILE_PATH
-
-          # print file to console
-          while IFS= read -r line; do
-              echo "$line"
-          done < $MANIFEST_FILE_PATH
-
-          # todo: use a Azure Pipeline Docker@2 task rather than using docker login
-          echo "Logging into ACR"     
-          docker login -u $(dockerUsername) -p $(dockerPwd) $ACR_NAME
-
-          echo "Building Dockerfile"
-          cd $(testChainCodeFolder)
-          docker build . -t $ACR_REPO_NAME:latest
-
-          echo "Pushing to ACR"
-          docker images
-
-          docker tag $ACR_REPO_NAME:latest $ACR_NAME/$ACR_REPO_NAME:$CHAINCODE_TAG
-          docker push $ACR_NAME/$ACR_REPO_NAME:$CHAINCODE_TAG
-
-          docker tag $ACR_REPO_NAME:latest $ACR_NAME/$ACR_REPO_NAME:latest          
-          docker push $ACR_NAME/$ACR_REPO_NAME:latest
-
-          # Apply manifest
-          echo "Applying kubernetes manifest"
-
-          kubectl config set-context --current --namespace=$NAMESPACE
-          kubectl apply -f $MANIFEST_FILE_PATH
-
-          echo "<END>=========Test Chaincode===========<END>"
-
-    - task: Bash@3
-      displayName: "Chaincode (Test): Print PackageId & set pipeline variable"
-      condition: and(succeeded(), eq('${{ parameters.deployTestChaincode }}', 'true'))
-      inputs:
-        targetType: 'inline'
-        script: |
-          CHAINCODE_LOCATION=$(testChainCodeFolder)/deployment_artifacts
-          packageId=$(<$CHAINCODE_LOCATION/packageId.txt)
-          echo "$packageId"
-          echo "##vso[task.setvariable variable=hlfChaincodeTestPackageId]$packageId"
+  
+- deployment: CreateOrdererandPeer
+  displayName: 'Create Orderer and Peer deployment plan'
+  dependsOn: GenerateImagesAndArtefacts
+  condition: and(succeeded(), eq('${{ parameters.deployResources }}', 'true'))  
+  environment: ${{ parameters.deployEnvironment }}
+  timeoutInMinutes: 120
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self 
+        - task: AzureCLI@2      
+          displayName: Ordererer resource groups and it's deployments          
+          timeoutInMinutes: 60
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            addSpnToEnvironment: true
+            failOnStandardError: false # set to false as this can return stderr
+            scriptLocation: inlineScript
+            inlineScript: |
+              az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
+              az account set --subscription $(hlfSubscription)
+
+              echo "Creating Orderer resource group and it's components..."
+              az group create -l $(hlfRegion) -n $(hlfOrdererResourceGroup)
+              az deployment group create --name hlf-main-orderer --resource-group $(hlfOrdererResourceGroup) --template-uri https://$(tempArtefactBlobName).blob.core.windows.net/$(tempArtefactBlobContainerName)/mainTemplate.json --parameter resourcePrefix='order-' hlfOrgName=$(hlfOrdererOrganization) clusterName=$(hlfAksClusterOrderer) dnsPrefix='orderer' agentCount='3' servicePrincipalClientId=$servicePrincipalId servicePrincipalClientSecret=$servicePrincipalKey hlfUserName=$(hlfUserName) hlfCaPswd=$(hlfCaPassword) kubernetesVersion='1.20.7'
+
+        - task: AzureCLI@2
+          displayName: Peer resource groups and it's deployments
+          timeoutInMinutes: 60
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            addSpnToEnvironment: true
+            failOnStandardError: false # set to false as this can return stderr
+            scriptLocation: inlineScript
+            inlineScript: |
+              az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
+              az account set --subscription $(hlfSubscription)
+
+              echo "Creating Peer resource group and it's components..."
+              az group create -l $(hlfRegion) -n $(hlfPeerResourceGroup)            
+              az deployment group create --name hlf-main-peer --resource-group $(hlfPeerResourceGroup) --template-uri https://$(tempArtefactBlobName).blob.core.windows.net/$(tempArtefactBlobContainerName)/mainTemplate.json --parameter resourcePrefix='peer-' hlfOrgName=$(hlfPeerOrganization) clusterName=$(hlfAksClusterPeer) dnsPrefix='peer' agentCount='3' servicePrincipalClientId=$servicePrincipalId servicePrincipalClientSecret=$servicePrincipalKey hlfUserName=$(hlfUserName) hlfCaPswd=$(hlfCaPassword) kubernetesVersion='1.20.7' hlfMemberType='peer'
+
+- deployment: CreateProfiles
+  displayName: 'Create Profiles, Consortium, Setup Fabric CLI, Channel and chaincode operations'
+  dependsOn: CreateOrdererandPeer
+  condition: in(dependencies.CreateOrdererandPeer.result, 'Succeeded', 'Skipped')
+  environment: ${{ parameters.deployEnvironment }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self       
+        - task: AzureCLI@2
+          displayName: Creating profiles for orderer and peer
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            addSpnToEnvironment: true
+            failOnStandardError: false # required as the output gets detected as stderr even if not actually error
+            scriptLocation: inlineScript
+            inlineScript: |
+              az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId
+              az account set --subscription $(hlfSubscription)
+
+              echo "Setting execute permissions for shell script getConnector.sh:"
+              sudo chmod +x $(hlfTDeployToolingRootFolder)/application/getConnector.sh
+
+              echo "getConnector.sh output for Orderer:"
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup)
+
+              echo "getConnector.sh output for Peer:"
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup)
+
+              echo "Creating Profile folder..."
+              mkdir -m 777 $(hlfTDeployToolingRootFolder)/application/profile
+
+              echo "Creating Orderer Profiles"
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/gateway/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/admin/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfOrdererResourceGroup) | sed -e "s/{action}/msp/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
+
+              echo "Orderer CCP profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-ccp.json)
+
+              echo "Orderer Admin profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-admin.json)
+
+              echo "Orderer MSP profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfOrdererOrganization)-msp.json)
+
+              echo "Creating Peer Profiles"
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/gateway/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/admin/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
+              $(hlfTDeployToolingRootFolder)/application/getConnector.sh $(hlfPeerResourceGroup) | sed -e "s/{action}/msp/g"| xargs curl > $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
+
+              echo "Peer Connection profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-ccp.json)
+
+              echo "Peer Admin profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-admin.json)
+
+              echo "Peer MSP profile:"
+              while IFS= read -r line; do
+                  echo "$line"
+              done < $(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
+              # todo: az keyvault secret set --name $(hlfOrdererOrganization)-ccp.json --vault-name MyKeyVault --value (<$(hlfPeerOrganization)-msp.json)
+
+        - task: AzureCLI@2
+          displayName: Saving peer profiles to Keyvault
+          inputs:
+            azureSubscription: ${{ parameters.adminProfileKeyVaultServiceConnectionName }}
+            scriptType: pscore
+            addSpnToEnvironment: true
+            failOnStandardError: false # required as the output gets detected as stderr even if not actually error
+            scriptLocation: inlineScript
+            inlineScript: |
+              cd $(hlfTDeployToolingRootFolder)/application/profile/
+
+              $peerAdminProfile = get-content "$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json"
+              $peerConnectionProfile = Get-Content "$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json"
+
+              $PeerProfileObject = @"
+              {
+              "adminProfile":$peerAdminProfile,
+              "connectionProfile": $peerConnectionProfile
+              }
+              "@ | out-file -filepath kv_secret.txt
+
+              az keyvault secret set --vault-name "$(adminProfileKeyVaultName)"  --name "$(adminProfileSecretName)" --file kv_secret.txt
+
+        - task: Npm@1
+          displayName: Install NPM (azhlfTool)
+          inputs:
+            command: 'install'
+            verbose: true
+            workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
+
+        - task: Npm@1
+          displayName: NPM Audit (azhlfTool)
+          condition: and(succeeded(), eq('${{ parameters.runNpmAudit }}', 'true'))
+          inputs:
+            command: 'custom'
+            customCommand: 'audit --audit-level=high --registry=https://registry.npmjs.org/'
+            verbose: true
+            workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
+
+        - task: Npm@1
+          displayName: NPM Setup (azhlfTool)
+          inputs:
+            command: 'custom'
+            customCommand: 'run setup'
+            verbose: true
+            workingDir: $(hlfTDeployToolingRootFolder)/azhlfTool
+
+        - task: AzureCLI@2
+          displayName: Creating Consortium
+          condition: and(succeeded(), eq('${{ parameters.createConsortium }}', 'true'))
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            failOnStandardError: true
+            addSpnToEnvironment: true
+            scriptLocation: inlineScript
+            inlineScript: |
+              sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
+              sudo az account set --subscription $(hlfSubscription)
+
+              cd $(hlfTDeployToolingRootFolder)/azhlfTool
+              echo "Setting up variables"
+
+              # Set environment variables for the orderer organization's client
+              export ORDERER_ORG_SUBSCRIPTION=$(hlfSubscription)
+              export ORDERER_ORG_RESOURCE_GROUP=$(hlfOrdererResourceGroup)
+              export ORDERER_ORG_NAME=$(hlfOrdererOrganization)
+              export ORDERER_ADMIN_IDENTITY="admin.$ORDERER_ORG_NAME"
+              export CHANNEL_NAME=$(hlfChannelName)
+
+              # Set environment variables for the peer organization's client
+              export PEER_ORG_SUBSCRIPTION=$(hlfSubscription)
+              export PEER_ORG_RESOURCE_GROUP=$(hlfPeerResourceGroup)
+              export PEER_ORG_NAME=$(hlfPeerOrganization)
+              export PEER_ADMIN_IDENTITY="admin.$PEER_ORG_NAME"
+
+              # Set environment variables for an Azure storage account
+              export STORAGE_SUBSCRIPTION=$(hlfSubscription)
+              export STORAGE_RESOURCE_GROUP=$(profileBlobStorageResourceGroup)
+              export STORAGE_ACCOUNT=$(profileBlobName)
+              export STORAGE_FILE_SHARE=$(profileBlobStorageFileShare)
+              
+              echo "Creating fileshare"
+              export STORAGE_KEY=$(az storage account keys list --resource-group $STORAGE_RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query "[0].value" | tr -d '"')
+              az storage share create --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY --name $STORAGE_FILE_SHARE
+
+              echo "Creating fileshare connection string"
+              export SAS_TOKEN=$(az storage account generate-sas --account-key $STORAGE_KEY --account-name $STORAGE_ACCOUNT --expiry `date -u -d "1 day" '+%Y-%m-%dT%H:%MZ'` --https-only --permissions lruwd --resource-types sco --services f | tr -d '"')
+              export AZURE_FILE_CONNECTION_STRING=https://$STORAGE_ACCOUNT.file.core.windows.net/$STORAGE_FILE_SHARE?$SAS_TOKEN
+
+              # For the orderer organization:
+              sudo ./azhlf adminProfile import fromAzure -o $ORDERER_ORG_NAME -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION
+              sudo ./azhlf connectionProfile import fromAzure -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION -o $ORDERER_ORG_NAME
+              sudo ./azhlf msp import fromAzure -g $ORDERER_ORG_RESOURCE_GROUP -s $ORDERER_ORG_SUBSCRIPTION -o $ORDERER_ORG_NAME
+
+              # For the peer organization:
+              sudo ./azhlf adminProfile import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
+              sudo ./azhlf connectionProfile import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
+              sudo ./azhlf msp import fromAzure -g $PEER_ORG_RESOURCE_GROUP -s $PEER_ORG_SUBSCRIPTION -o $PEER_ORG_NAME
+
+              # Add a peer organization for consortium management
+              sudo ./azhlf msp export toAzureStorage -f $AZURE_FILE_CONNECTION_STRING -o $PEER_ORG_NAME
+              sudo ./azhlf msp import fromAzureStorage -o $PEER_ORG_NAME -f $AZURE_FILE_CONNECTION_STRING
+              sudo ./azhlf consortium join -o $ORDERER_ORG_NAME -u $ORDERER_ADMIN_IDENTITY -p $PEER_ORG_NAME
+
+        - task: AzureCLI@2
+          displayName: Clone Fabric CLI Repo
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            failOnStandardError: false
+            addSpnToEnvironment: true
+            scriptLocation: inlineScript
+            inlineScript: |
+              sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
+              sudo az account set --subscription $(hlfSubscription)
+
+              echo "Cloning git repo of fabric cli"
+              cd $(hlfTDeployToolingRootFolder)/
+              git clone https://github.com/hyperledger/fabric-cli.git
+              
+              # checkout commit we know works
+              cd fabric-cli
+              git checkout f699625b6781789d1422ceb00b2bf56c42df5ba1
+
+        - task: AzureCLI@2
+          displayName: Setup Fabric CLI
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            failOnStandardError: false
+            addSpnToEnvironment: true
+            scriptLocation: inlineScript
+            inlineScript: |
+              sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
+              sudo az account set --subscription $(hlfSubscription)
+
+              echo "Setting permission for certgen.sh"
+              sudo chmod +x $(hlfTDeployToolingRootFolder)/setupFabricCli/certgen.sh 
+
+              echo "Generate crypto materials for peer organization"
+              export Peer_Connection_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-ccp.json
+              export Peer_Admin_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-admin.json
+              export Peer_Msp_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfPeerOrganization)-msp.json
+
+              cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
+              ./certgen.sh peer $Peer_Admin_Profile_Path $Peer_Connection_Profile_Path $Peer_Msp_Profile_Path
+
+              echo "Generate crypto materials for orderer organization"
+              export Orderer_Connection_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-ccp.json
+              export Orderer_Admin_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-admin.json
+              export Orderer_Msp_Profile_Path=$(hlfTDeployToolingRootFolder)/application/profile/$(hlfOrdererOrganization)-msp.json
+            
+              cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
+              ./certgen.sh orderer $Orderer_Admin_Profile_Path $Orderer_Connection_Profile_Path $Orderer_Msp_Profile_Path
+
+              export FABRIC_EXECUTABLE_PATH=$(hlfTDeployToolingRootFolder)/fabric-cli/bin/fabric
+              export PEER_CONNECTION_PROFILE_PATH=$Peer_Connection_Profile_Path
+              export ORDERER_CONNECTION_PROFILE_PATH=$Orderer_Connection_Profile_Path
+
+              cd $(hlfTDeployToolingRootFolder)/setupFabricCli/genFabricCliGOConfig/main/
+              sudo go version
+              echo "Installing Go dependencies"
+              sudo go get ./...
+              echo "Building Go files"
+              sudo go build -o ../../configCoversion
+              cd ../../
+              echo "Running configVersion"
+              pwd
+              ./configCoversion
+
+              echo "Listing contents in $(hlfTDeployToolingRootFolder)/setupFabricCli/"
+              cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
+              ls
+
+              echo "Building Fabric CLI"
+              cd $(hlfTDeployToolingRootFolder)/fabric-cli
+              make
+
+        - task: AzureCLI@2
+          displayName: Creating and joing channel
+          condition: and(succeeded(), eq('${{ parameters.createChannelAndJoin }}', 'true'))
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            failOnStandardError: false
+            addSpnToEnvironment: true
+            scriptLocation: inlineScript
+            inlineScript: |
+              sudo az login --service-principal --username $servicePrincipalId --password $servicePrincipalKey --tenant $tenantId  
+              sudo az account set --subscription $(hlfSubscription)
+
+              export FABRIC_EXECUTABLE_PATH=$(hlfTDeployToolingRootFolder)/fabric-cli/bin/fabric
+
+              echo "Calling Fabric CLI network"
+              $FABRIC_EXECUTABLE_PATH network set $(hlfNetworkName) $(hlfTDeployToolingRootFolder)/setupFabricCli/$(hlfPeerOrganization)-config.yaml
+
+              echo "Setting Fabric CLI context"
+              export PEER_ORG_NAME=$(hlfPeerOrganization)
+              export PEER_ADMIN_IDENTITY="admin.$PEER_ORG_NAME"
+
+              $FABRIC_EXECUTABLE_PATH context set $(hlfContextName) --channel $(hlfChannelName) --network $(hlfNetworkName) --organization $(hlfPeerOrganization) --user $PEER_ADMIN_IDENTITY
+              $FABRIC_EXECUTABLE_PATH context use $(hlfContextName)
+              
+              echo "Creating channel config"
+              cd $(hlfTDeployToolingRootFolder)/setupFabricCli/
+              curl https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh | bash -s -- 2.2.0 -d -s
+              cat tempConfigtx.yaml | sed -e "s/OrgName/$(hlfPeerOrganization)/g" > configtx.yaml
+              bin/configtxgen -profile OrgsChannel -outputCreateChannelTx ./channel-artifacts/$(hlfChannelName).tx -channelID $(hlfChannelName)
+
+              echo "Creating channel using Fabric CLI "
+              $FABRIC_EXECUTABLE_PATH channel create $(hlfChannelName) ./channel-artifacts/$(hlfChannelName).tx
+
+              echo "Pausing before joining channel"
+              sleep 60
+
+              echo "Joining channel using Fabric CLI"
+              $FABRIC_EXECUTABLE_PATH channel join $(hlfChannelName)
+
+        - task: AzureCLI@2
+          displayName: "Chaincode (Test): Approve, Commit and Deploy"
+          condition: and(succeeded(), eq('${{ parameters.deployTestChaincode }}', 'true'))
+          inputs:
+            azureSubscription: ${{ parameters.serviceConnectionName }}
+            scriptType: bash
+            failOnStandardError: false
+            addSpnToEnvironment: true
+            scriptLocation: inlineScript
+            inlineScript: |
+              deployingChainCodeUniqueName=$(testChainCodeUniqueName)
+              deployingChainCodeFolder=$(testChainCodeFolder)
+              deployingChainCodeUniqueLabel=$(testChainCodeUniqueLabel)
+              deployingChainCodeVersion=$(testChainCodeVersion)
+              deployingChainCodeSequence=$(testChainCodeSequence)
+              deployingChainCodeComponentName=$(testChainCodeComponentName)
+              deployingChainCodeUniqueNamespace=$(testChainCodeUniqueNamespace)
+              deployingChainCodePort=$(testChainCodePort)
+              buildId=$(Build.BuildId)
+
+              echo "Setting execute permissions for shell script deployChaincode.sh:"
+              sudo chmod +x $(chaincodeRootFolder)/deployChaincode.sh
+
+              cd $(chaincodeRootFolder)
+              ./deployChaincode.sh $(hlfSubscription) $servicePrincipalId $servicePrincipalKey $tenantId $(hlfTDeployToolingRootFolder) $(hlfNetworkName) $(hlfPeerOrganization) $(hlfContextName) $(hlfChannelName) $deployingChainCodeUniqueName $(chaincodeRootFolder) $deployingChainCodeFolder $deployingChainCodeUniqueLabel $deployingChainCodeVersion $deployingChainCodeSequence $deployingChainCodeComponentName $deployingChainCodeUniqueNamespace $deployingChainCodePort $(chaincodeSupportEmail) $(dockerId) $(dockerUsername) $(dockerPwd) $buildId $(hlfPeerResourceGroup) $(hlfAksClusterPeer) $(chaincodeCertificateName) $(chaincodeCertificateKeyName) $(chaincodeCertificateCountry) $(chaincodeCertificateState) $(chaincodeCertificateLocality) $(chaincodeCertificateOrganisation) $(chaincodeSecretNamePrefix) $(chaincodePackageIdStorageKeyVaultName)

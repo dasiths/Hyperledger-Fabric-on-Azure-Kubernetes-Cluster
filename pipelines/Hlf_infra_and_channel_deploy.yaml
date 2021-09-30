@@ -1,0 +1,120 @@
+name: "HLF-$(Year:yyyy).$(Month).$(Date:dd)$(Rev:.r)"
+# Note: This pipeline is based on documentation in: https://github.com/krypc-code/Hyperledger-Fabric-on-Azure-Kubernetes-Cluster
+# This pipeline deploys the infrastructure components (Orderer and Peer) for the Blockchain and does the one time tasks like creating the consortium and channels.
+
+trigger:
+- none
+
+pool:
+  name: Azure Pipelines
+  vmImage: 'ubuntu-latest'
+
+parameters:
+# switches to control deployment environment
+- name: deployDev
+  displayName: Deploy to Dev
+  type: boolean
+  default: true
+
+- name: deployTest
+  displayName: Deploy to Test
+  type: boolean
+  default: true
+
+- name: deployQA
+  displayName: Deploy to QA
+  type: boolean
+  default: true
+
+# other switches
+- name: deployResources
+  displayName: '1. Deploy Resources for Orderer and Peer'
+  type: boolean
+  default: false # this is only required to be run once
+
+- name: createConsortium
+  displayName: '2. Create the consortium'
+  type: boolean
+  default: false # this is only required to be run once
+
+- name: createChannelAndJoin
+  displayName: '3. Create the channel and join'
+  type: boolean 
+  default: false # this is only required to be run once
+
+variables:
+  # chaincode tooling folder
+  hlfTDeployToolingRootFolder: $(Build.SourcesDirectory)/krypc_fork 
+
+  ######## shared chaincode settings ########
+  chaincodeRootFolder: $(Build.SourcesDirectory)/chaincode
+  chaincodeSupportEmail: support@yourorg.com.a
+  chaincodeCertificateCountry: AU
+  chaincodeCertificateState: VIC
+  chaincodeCertificateLocality: Melbourne
+  chaincodeCertificateOrganisation: ExampleInc
+  chaincodeCertificateName: cc-cert
+  chaincodeCertificateKeyName: cc-key   
+
+stages:
+- stage: Dev
+  displayName: 'Dev deployment'
+  condition: eq('${{ parameters.deployDev }}', 'true')
+  variables:
+  - group: 'HLF 2.2 - Dev' # todo: point to your variable group
+  jobs:
+    - template: templates/Hlf_complete_template.yaml
+      parameters:
+        deployEnvironment: Dev # todo: point to your environment
+        serviceConnectionName: BlockChainServiceConnection # todo: point to your service connection name
+        adminProfileKeyVaultServiceConnectionName: BlockChainServiceConnection # todo: point to your service connection name (you can use the above if it also has access to the Keyvault that stores admin profile)
+
+        deployResources: ${{ parameters.deployResources }}
+        createConsortium: ${{ parameters.createConsortium }}
+        createChannelAndJoin: ${{ parameters.createChannelAndJoin }}
+        runNpmAudit: false
+
+        ######## These chaincodes are not deployed when deploying infrastructure. ########
+        deployTestChaincode: false
+
+- stage: Test
+  displayName: 'Test deployment'
+  dependsOn: Dev
+  condition: and(in(dependencies.Dev.result, 'Succeeded', 'Skipped'), eq('${{ parameters.deployTest }}', 'true'))
+  variables:
+  - group: 'HLF 2.2 - Test' # todo: point to your variable group
+  jobs:
+    - template: templates/Hlf_complete_template.yaml
+      parameters:
+        deployEnvironment: Test # todo: point to your environment
+        serviceConnectionName: BlockChainServiceConnection # todo: point to your service connection name
+        adminProfileKeyVaultServiceConnectionName: BlockChainServiceConnection # todo: point to your service connection name (you can use the above if it also has access to the Keyvault that stores admin profile)
+
+        deployResources: ${{ parameters.deployResources }}
+        createConsortium: ${{ parameters.createConsortium }}
+        createChannelAndJoin: ${{ parameters.createChannelAndJoin }}
+        runNpmAudit: false
+
+        ######## These chaincodes are not deployed when deploying infrastructure. ########
+        deployTestChaincode: false
+
+- stage: QA
+  displayName: 'QA deployment'
+  dependsOn: Test
+  condition: and(in(dependencies.Test.result, 'Succeeded', 'Skipped'), eq('${{ parameters.deployQA }}', 'true'))
+  variables:
+  - group: 'HLF 2.2 - QA' # todo: point to your variable group
+  jobs:
+    - template: templates/Hlf_complete_template.yaml
+      parameters:
+        deployEnvironment: QA # todo: point to your environment
+        serviceConnectionName: BlockChainServiceConnection # todo: point to your service connection name
+        adminProfileKeyVaultServiceConnectionName: BlockChainServiceConnection # todo: point to your service connection name (you can use the above if it also has access to the Keyvault that stores admin profile)
+
+        deployResources: ${{ parameters.deployResources }}
+        createConsortium: ${{ parameters.createConsortium }}
+        createChannelAndJoin: ${{ parameters.createChannelAndJoin }}
+        runNpmAudit: false
+
+        ######## These chaincodes are not deployed when deploying infrastructure. ########
+        deployTestChaincode: false
