@@ -33,7 +33,8 @@ dockerPwd: comes-from-variable-group
 dockerImage: comes-from-variable-group
 
 # Key Vault #
-keyVaultName: comes-from-parent-pipepine 
+# adminProfileKeyVaultName: comes-from-variable-group. This is where the connection profile will be saved so apps can use it.
+# chaincodePackageIdStorageKeyVaultName: comes-from-variable-group. This is where the deployed packaged id will be stored.  
 
 # HLF specific #
 hlfRegion: comes-from-variable-group 
