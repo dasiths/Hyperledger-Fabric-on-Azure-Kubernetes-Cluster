@@ -42,9 +42,14 @@ parameters:
   # hlfSubscription: comes-from-variable-group  
 
   ####### Blob Storage for temporary storage of build artefacts ########
+  # This has to have public access
   # tempArtefactBlobName: comes-from-variable-group # note: this need to be created prior
   # tempArtefactBlobStorageKey: comes-from-variable-group 
   # tempArtefactBlobContainerName: comes-from-variable-group # note: this need to be created prior
+
+  ## NOTE ## :
+  # The above build artefacts are used for the azure functions provisioned. The Azure Functions have their source stored in the above blob container.
+  # If you don't want the above blob container to have public access then refactor the azure function ARM template (mainTemplate.json funcNodeJsPackageUri variable) to use a url with a SAS token.
   
   ####### Blob Storage for saving generated orderer and peer profile ########
   # profileBlobStorageResourceGroup: comes-from-variable-group # note: this need to be created prior
@@ -433,6 +438,7 @@ jobs:
               export ORDERER_CONNECTION_PROFILE_PATH=$Orderer_Connection_Profile_Path
 
               cd $(hlfTDeployToolingRootFolder)/setupFabricCli/genFabricCliGOConfig/main/
+              go env -w GO111MODULE=auto
               sudo go version
               echo "Installing Go dependencies"
               sudo go get ./...
