@@ -2,6 +2,8 @@
 
 Forked from:
 > Hyperledger fabric developer network on few clicks. This offer is meant to provide Hyperledger Fabric as a Service using ARM Templates to spin off resources inside an AKS cluster. https://github.com/krypc-code/Hyperledger-Fabric-on-Azure-Kubernetes-Cluster
+>
+> Further work on this has been done by Ahmed Salijee in https://github.com/ahmedsza/Hyperledger-Fabric-on-Azure-Kubernetes-Cluster
 
 
 This is an example how the same can be done in an automated way via an Azure DevOps Pipeline. The idea is to have two pipelines. One for deploying the infrastructure (Orderer, Peer and Consortium/Channel operation) and one for deploying the chaincode. We have a reusable template `HLF_complete_template.yaml` and a script `deployChaincode.sh` to facilitate this.
